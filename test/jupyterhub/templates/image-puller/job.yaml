@@ -1,0 +1,68 @@
+---
+# Source: jupyterhub/templates/image-puller/job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hook-image-awaiter
+  labels:
+    component: image-puller
+    app: jupyterhub
+    release: jhub
+    chart: jupyterhub-1.1.4
+    heritage: Helm
+    hub.jupyter.org/deletable: "true"
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "10"
+spec:
+  template:
+    # The hook-image-awaiter Job and hook-image-puller DaemonSet was
+    # conditionally created based on this state:
+    #
+    # prePuller.hook.enabled=true
+    # prePuller.hook.pullOnlyOnChanges=true
+    # post-upgrade checksum != pre-upgrade checksum (of the hook-image-puller DaemonSet)
+    # "c864f05af9f650449149c61fbe9239dd4a02ac3e3971086d6dbdbc5f4b00698f" != ""
+    #
+    metadata:
+      labels:
+        component: image-puller
+        app: jupyterhub
+        release: jhub
+    spec:
+      restartPolicy: Never
+      serviceAccountName: hook-image-awaiter
+      nodeSelector: {}
+      tolerations:
+        - effect: NoSchedule
+          key: hub.jupyter.org/dedicated
+          operator: Equal
+          value: core
+        - effect: NoSchedule
+          key: hub.jupyter.org_dedicated
+          operator: Equal
+          value: core
+      imagePullSecrets: [{"name":"image-pull-secret"}]
+      containers:
+        - image: registry.devopsnonprd.vayuktbcs:8082/jupyterhub/k8s-image-awaiter:1.1.4
+          name: hook-image-awaiter
+          command:
+            - /image-awaiter
+            - -ca-path=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            - -auth-token-path=/var/run/secrets/kubernetes.io/serviceaccount/token
+            - -api-server-address=https://kubernetes.default.svc:$(KUBERNETES_SERVICE_PORT)
+            - -namespace=rdt-uat
+            - -daemonset=hook-image-puller
+            - -pod-scheduling-wait-duration=10
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 65534
+            runAsUser: 65534
+          resources:
+            limits:
+              cpu: 0.5
+              memory: 256Mi
+            requests:
+              cpu: "0.1"
+              memory: 64Mi

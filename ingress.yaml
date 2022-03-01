@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/configuration-snippet: 'more_set_headers "X-Frame-Options: SAMEORIGIN";'
+  name: jhub-ingress
+  namespace: rdt-uat
+spec:
+  rules:
+  - host: jhub.krungthai
+    http:
+      paths:
+      - backend:
+          serviceName: proxy-public
+          servicePort: 80
+        path: /
+        pathType: ImplementationSpecific

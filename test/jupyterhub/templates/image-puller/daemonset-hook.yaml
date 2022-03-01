@@ -1,0 +1,79 @@
+---
+# Source: jupyterhub/templates/image-puller/daemonset-hook.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hook-image-puller
+  labels:
+    component: hook-image-puller
+    app: jupyterhub
+    release: jhub
+    chart: jupyterhub-1.1.4
+    heritage: Helm
+    hub.jupyter.org/deletable: "true"
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-10"
+spec:
+  selector:
+    matchLabels:
+      component: hook-image-puller
+      app: jupyterhub
+      release: jhub
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 100%
+  template:
+    metadata:
+      labels:
+        component: hook-image-puller
+        app: jupyterhub
+        release: jhub
+    spec:
+      nodeSelector: {}
+      tolerations:
+        - effect: NoSchedule
+          key: hub.jupyter.org/dedicated
+          operator: Equal
+          value: user
+        - effect: NoSchedule
+          key: hub.jupyter.org_dedicated
+          operator: Equal
+          value: user
+      terminationGracePeriodSeconds: 0
+      automountServiceAccountToken: false
+      imagePullSecrets: [{"name":"image-pull-secret"}]
+      initContainers:
+        - name: image-pull-singleuser
+          image: registry.devopsnonprd.vayuktbcs:8082/chinnapatke01/elyra:vaex-1.3.1
+          command:
+            - /bin/sh
+            - -c
+            - echo "Pulling complete"
+          resources:
+            limits:
+              cpu: 0.5
+              memory: 256Mi
+            requests:
+              cpu: "0.1"
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 65534
+            runAsUser: 65534
+      containers:
+        - name: pause
+          image: registry.devopsnonprd.vayuktbcs:8082/nattawut07x/pause:3.5
+          resources:
+            limits:
+              cpu: 0.5
+              memory: 256Mi
+            requests:
+              cpu: "0.1"
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 65534
+            runAsUser: 65534

@@ -1,0 +1,7 @@
+singleuser:
+  cpu:      
+    limit: 1
+    guarantee: 1
+  memory:
+    limit: 1
+    guarantee: 1
